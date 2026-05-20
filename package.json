@@ -1,0 +1,17 @@
+{
+  "name": "lagfm-suite",
+  "private": true,
+  "version": "6.0.1",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "mobile:dev": "npm run dev -w apps/mobile",
+    "mobile:build": "npm run build -w apps/mobile",
+    "mobile:sync": "cd apps/mobile && ./node_modules/.bin/cap sync android",
+    "desktop:dev": "npm run dev -w apps/desktop",
+    "desktop:build": "npm run build -w apps/desktop",
+    "git:force-local": "git add . && git commit -m 'force local state over remote' && git push origin main --force",
+    "git:soft-sync": "git fetch origin && git merge -s ours origin/main"
+  }
+}

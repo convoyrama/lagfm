@@ -1,0 +1,20 @@
+# Paleta de Colores de Branding: LAGFM
+
+Este archivo centraliza los colores y convenciones de diseño específicamente para el proyecto LAGFM.
+
+## Colores Principales
+- **Verde Principal:** `#5aa519` (Usado en el texto "FM" y las ondas del isotipo)
+- **Blanco:** `#ffffff` (Usado en el texto "LAG" y la base del isotipo)
+- **Negro de Fondo:** `#141414` (Usado en las versiones `circleblack` y `squareblack`)
+
+## Convenciones de Archivos
+- **logo**: Solo el texto ("LAGFM").
+- **isotipo**: Solo el dibujo/símbolo.
+- **imagotipo**: El símbolo (dibujo) junto con el texto.
+- **isologo**: El símbolo a la izquierda del texto (disposición horizontal).
+- **Fondo:** Si el nombre no incluye un color (como "black"), el fondo es transparente.
+- **Dimensiones**: El número en el nombre indica el tamaño en píxeles (ej. `512`, `2800x512`).
+
+## Guía de Uso
+- Para aplicaciones que requieran fondo oscuro, usar las versiones `black`.
+- Para uso general sobre otros fondos, preferir los SVG transparentes.

@@ -1,0 +1,8 @@
+{
+  "appId": "com.convoyrama.lagfm",
+  "appName": "LAGFM",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "http"
+  }
+}

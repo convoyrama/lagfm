@@ -1,0 +1,43 @@
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Build outputs
+dist/
+build/
+target/
+out/
+android/app/build/
+android/.gradle/
+android/local.properties
+android/captures/
+android/*.iml
+.idea/
+
+# Tauri/Desktop specific
+src-tauri/target/
+apps/desktop/*.txt
+
+# OS/System files
+.DS_Store
+Thumbs.db
+
+# Sensitive info
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Docs and Project Memory (Ghost Protocol)
+docs/
+MEMORY.md
+GEMINI.md
+DESIGN_DOC.md
+STORY.md
+OPERA_ALDERON.md
+DEEPDUEL_PROGRESS.md
+
+# Capacitor specific
+android/app/src/main/assets/public/
+ios/App/App/public/
