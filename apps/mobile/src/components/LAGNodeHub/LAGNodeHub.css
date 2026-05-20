@@ -1,0 +1,134 @@
+.hub-panel {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  color: #fff;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 15px;
+  box-sizing: border-box;
+}
+
+.hub-scanlines {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%);
+  background-size: 100% 4px;
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0.2;
+}
+
+.hub-core-display {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.8s ease;
+}
+
+.hub-core-display.idle { opacity: 0.3; filter: grayscale(0.8); }
+.hub-core-display.active { opacity: 1; filter: none; }
+
+/* 1. HEADER */
+.hub-header { display: flex; justify-content: space-between; margin-bottom: 12px; }
+.header-side { flex: 1; display: flex; align-items: center; gap: 5px; font-size: 0.8rem; font-weight: bold; }
+.header-center { flex: 1; display: flex; justify-content: center; align-items: center; gap: 5px; font-size: 0.9rem; font-weight: bold; }
+.align-end { justify-content: flex-end; }
+.label-icon { opacity: 0.6; }
+.cyan { color: #00ffff; }
+
+/* 2. INDICADORES */
+.indicators-bar { display: flex; justify-content: center; align-items: center; gap: 12px; margin-bottom: 12px; background: rgba(255,255,255,0.03); padding: 6px; border-radius: 20px; }
+.indicator { color: #1a1a1a; transition: all 0.2s; opacity: 0.2; }
+.indicator.active { filter: drop-shadow(0 0 5px currentColor); opacity: 1; }
+.blinker.active { color: #00ff00; animation: hub-blink 0.5s infinite; }
+.low-beam.active { color: #00ff88; }
+.high-beam.active { color: #0088ff; }
+.beacons.active { color: #ffaa00; animation: hub-blink 0.8s infinite; }
+.park-brake.active { color: #ff4444; }
+.hazards.active { color: #ff4444; animation: hub-blink 0.5s infinite; }
+.retarder.active { color: #00ffff; }
+.engine-brake.active { color: #00ffff; }
+
+@keyframes hub-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.1; } }
+
+/* 3. INFOTAINMENT */
+.hub-infotainment { background: rgba(255,255,255,0.03); padding: 8px; border-radius: 8px; margin-bottom: 10px; }
+.infotainment-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.hub-play-btn { background: var(--vtc-green); border: none; color: #000; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.hub-volume-container { flex: 1; display: flex; align-items: center; gap: 8px; }
+.hub-volume-slider { flex: 1; height: 2px; -webkit-appearance: none; outline: none; border-radius: 1px; }
+.hub-volume-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 10px; height: 10px; background: var(--vtc-green); border-radius: 50%; cursor: pointer; }
+.infotainment-bottom { overflow: hidden; height: 14px; position: relative; }
+.track-marquee { white-space: nowrap; font-size: 0.65rem; font-weight: bold; color: var(--vtc-green); animation: hub-marquee 12s linear infinite; }
+@keyframes hub-marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+
+/* 4. JOB DISPLAY */
+.hub-job-display {
+  margin-bottom: 15px;
+  border-top: 1px solid rgba(0, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(0, 255, 255, 0.1);
+  padding: 4px 0;
+}
+.job-marquee {
+  white-space: nowrap; overflow: hidden; height: 16px; position: relative;
+  font-size: 0.75rem; font-weight: bold; color: #00ffff;
+}
+.marquee-content {
+  display: inline-block;
+  padding-left: 100%;
+  animation: hub-marquee-scroll 20s linear infinite;
+}
+@keyframes hub-marquee-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+
+/* 5. MAIN GAUGES */
+.hub-main-container { flex: 1; display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
+.side-gauge-container { width: 15px; height: 130px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.side-gauge-bar { flex: 1; width: 8px; background: #080808; border-radius: 4px; position: relative; overflow: hidden; border: 1px solid #222; }
+.side-gauge-fill { position: absolute; bottom: 0; left: 0; width: 100%; transition: height 0.3s ease; }
+.side-gauge-fill.oil { background: linear-gradient(to top, #ffaa00, #ffff00); }
+.side-gauge-fill.air { background: linear-gradient(to top, #0088ff, #00ffff); }
+
+.hub-main { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; }
+.gear-display { font-size: 2.5rem; font-weight: 900; color: #fff; line-height: 1; margin-bottom: 8px; }
+.extra-info-row { display: flex; align-items: center; gap: 20px; margin-bottom: 12px; }
+.cruise-info { display: flex; align-items: center; gap: 4px; color: #333; font-size: 0.8rem; font-weight: bold; }
+.cruise-info.active { color: #00ff88; }
+.limit-info { width: 32px; height: 32px; border: 2px solid #ff0000; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.limit-value { color: #000; font-weight: 900; font-size: 0.9rem; }
+
+.speedometer { display: flex; flex-direction: column; align-items: center; margin-bottom: 8px; }
+.speed-value { font-size: 3.8rem; font-weight: 900; line-height: 0.8; letter-spacing: -2px; }
+.speed-unit { font-size: 0.7rem; font-weight: bold; color: #444; margin-top: 5px; }
+
+.rpm-blocks-container { width: 100%; display: flex; gap: 3px; margin-bottom: 15px; height: 8px; }
+.rpm-block { flex: 1; background: #080808; border-radius: 1px; }
+.rpm-block.active { background: #fff; box-shadow: 0 0 5px #fff; }
+.rpm-block.active.low { background: #00ffff; box-shadow: 0 0 5px #00ffff; }
+.rpm-block.active.optimal { background: #00ff88; box-shadow: 0 0 5px #00ff88; }
+.rpm-block.active.power { background: #d4ff00; box-shadow: 0 0 5px #d4ff00; }
+.rpm-block.active.warning { background: #ffaa00; box-shadow: 0 0 5px #ffaa00; }
+.rpm-block.active.danger { background: #ff3e3e; box-shadow: 0 0 10px #ff3e3e; animation: hub-blink 0.2s infinite alternate; }
+
+.data-row { width: 100%; display: flex; justify-content: space-around; margin-bottom: 12px; }
+.fuel-numeric, .avg-numeric { display: flex; align-items: baseline; gap: 5px; }
+.fuel-numeric .value, .avg-numeric .value { font-size: 1rem; font-weight: 900; }
+.fuel-numeric .unit, .avg-numeric .unit { font-size: 0.6rem; font-weight: bold; color: #444; }
+.critical-fuel { color: #ff3e3e; animation: hub-blink 0.5s infinite; }
+
+.game-name-container { width: 100%; display: flex; justify-content: center; align-items: center; gap: 15px; }
+.limit-btn { background: transparent; border: 1px solid #222; color: #444; font-size: 0.55rem; font-weight: 900; padding: 3px 8px; border-radius: 4px; }
+.limit-btn.active.real { color: #00ff88; border-color: #00ff88; }
+.limit-btn.active.race { color: #ffaa00; border-color: #ffaa00; }
+.game-name { font-size: 0.7rem; color: #444; font-weight: 900; letter-spacing: 2px; }
+
+/* 6. FOOTER */
+.hub-footer-status { display: flex; justify-content: space-between; align-items: center; padding: 0 10px; margin-top: auto; }
+.status-item { display: flex; align-items: center; gap: 8px; opacity: 0.3; transition: opacity 0.3s; }
+.status-item.active { opacity: 1; }
+.status-value { font-size: 0.9rem; font-weight: 900; }
+.critical-damage { animation: hub-blink 0.8s infinite; }
+.unit-toggle { background: #080808; border: 1px solid #222; color: #555; font-size: 0.6rem; font-weight: bold; padding: 4px 10px; border-radius: 4px; }
