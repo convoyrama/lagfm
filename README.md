@@ -1,7 +1,7 @@
 # LAG.FM Radio Suite
 > **By the community, for the community.**
 
-LAG.FM is a cross-platform radio client for simulator drivers (ETS2 / ATS). It provides audio streaming and real-time telemetry integration as a simple utility to help on the road.
+LAG.FM is a cross-platform radio client for simulator drivers (ETS2 / ATS).
 
 ## 📻 Overview
 This tool focuses on functional immersion:
