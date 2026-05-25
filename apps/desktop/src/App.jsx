@@ -180,6 +180,7 @@ function App() {
     log(`Selecting stream: ${stream.title} (ID: ${stream.id})`);
     setCurrentTrack({
       ...stream,
+      ts: Date.now(),
       artist: t.live_broadcast,
       lyrics: stream.desc?.[lang] || stream.desc?.es || t.info_description
     });
@@ -190,6 +191,7 @@ function App() {
     log(`Connecting preview stream: ${customUrl}`);
     setCurrentTrack({
       id: 'custom_preview',
+      ts: Date.now(),
       title: customName || 'PREVIEW',
       artist: 'EXTERNAL URL',
       src: customUrl,

@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { NORMAL_PLAYLIST, JOKER_TRACK, JINGLES } from '../data/internalTracks';
-import { invoke } from "@tauri-apps/api/core";
 
 const log = (msg) => {
   console.log(`[AUDIO] ${msg}`);
@@ -96,6 +95,12 @@ export function useAudioPlayer(currentTrack, setCurrentTrack, translations = {})
     updateLink('handshake');
     
     audio.pause();
+    
+    // Cleanup old blob URL if any
+    if (audio.src && audio.src.startsWith('blob:')) {
+        URL.revokeObjectURL(audio.src);
+    }
+    
     audio.src = "";
     audio.load();
     
@@ -103,14 +108,10 @@ export function useAudioPlayer(currentTrack, setCurrentTrack, translations = {})
         audio.removeAttribute('crossOrigin');
         try {
             const response = await fetch(`${window.location.origin}/${src}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const blob = await response.blob();
-            const dataUrl = await new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.readAsDataURL(blob);
-            });
-            // Refuerzo MIME: Asegurar que WebKit sepa que es audio/mpeg
-            audio.src = dataUrl.replace('data:application/octet-stream', 'data:audio/mpeg');
+            const blobUrl = URL.createObjectURL(blob);
+            audio.src = blobUrl;
             
             if (!isInitialMount.current) {
                 audio.play().catch(e => {
@@ -118,7 +119,7 @@ export function useAudioPlayer(currentTrack, setCurrentTrack, translations = {})
                 });
             }
         } catch (fetchErr) {
-            log(`[RADIO] Local fetch failed: ${fetchErr.message}`);
+            log(`[RADIO] Local fetch failed: ${fetchErr.message}. Fallback to direct path.`);
             audio.src = `${window.location.origin}/${src}`;
         }
     } else {
@@ -184,6 +185,9 @@ export function useAudioPlayer(currentTrack, setCurrentTrack, translations = {})
 
     return () => {
       audio.pause();
+      if (audio.src && audio.src.startsWith('blob:')) {
+        URL.revokeObjectURL(audio.src);
+      }
       audio.src = "";
       audio.load();
       audio.removeEventListener('play', onPlay);
@@ -218,18 +222,15 @@ export function useAudioPlayer(currentTrack, setCurrentTrack, translations = {})
       return;
     }
 
-    const currentSrc = decodeURIComponent(radioRef.current.src || '');
-    if (!currentSrc.endsWith(currentTrack.src)) {
-      log(`Stream Switch: ${currentTrack.title}`);
-      retryCount.current = 0;
-      forcedLocal.current = false;
-      if (syncTimeout.current) clearTimeout(syncTimeout.current);
-      
-      const isLocal = currentTrack.id.toString().startsWith('local_') || currentTrack.id.toString().startsWith('j_') || currentTrack.id === 999;
-      applySource(currentTrack.src, isLocal);
-      isInitialMount.current = false;
-    }
-  }, [currentTrack.src, applySource, spin]);
+    log(`Stream Switch: ${currentTrack.title} (ID: ${currentTrack.id})`);
+    retryCount.current = 0;
+    forcedLocal.current = false;
+    if (syncTimeout.current) clearTimeout(syncTimeout.current);
+    
+    const isLocal = currentTrack.id.toString().startsWith('local_') || currentTrack.id.toString().startsWith('j_') || currentTrack.id === 999;
+    applySource(currentTrack.src, isLocal);
+    isInitialMount.current = false;
+  }, [currentTrack.src, currentTrack.ts, applySource, spin]);
 
   const togglePlay = useCallback(() => {
     const audio = radioRef.current;

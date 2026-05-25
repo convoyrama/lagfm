@@ -2009,6 +2009,7 @@ name = "lagfm"
 version = "6.0.0"
 dependencies = [
  "chrono",
+ "log",
  "once_cell",
  "serde",
  "serde_json",

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import convoyLogo from '../assets/branding/logo6516.svg';
 
 export default function AppFooter({ t, version }) {
   const [showSmoke, setShowSmoke] = useState(false);

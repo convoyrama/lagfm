@@ -7,16 +7,23 @@ dist/
 build/
 target/
 out/
+apps/*/dist/
+apps/*/build/
+apps/desktop/src-tauri/target/
+
+# Mobile specific
 android/app/build/
 android/.gradle/
 android/local.properties
 android/captures/
 android/*.iml
-.idea/
+apps/mobile/android/app/build/
+apps/mobile/android/.gradle/
+apps/mobile/android/local.properties
 
-# Tauri/Desktop specific
-src-tauri/target/
-apps/desktop/*.txt
+# IDEs
+.idea/
+.vscode/
 
 # OS/System files
 .DS_Store
@@ -29,7 +36,7 @@ Thumbs.db
 .env.test.local
 .env.production.local
 
-# Docs and Project Memory (Ghost Protocol)
+# Docs and Project Memory
 docs/
 MEMORY.md
 GEMINI.md
@@ -37,7 +44,9 @@ DESIGN_DOC.md
 STORY.md
 OPERA_ALDERON.md
 DEEPDUEL_PROGRESS.md
+DEEPDUEL_HISTORY.md
 
 # Capacitor specific
 android/app/src/main/assets/public/
 ios/App/App/public/
+apps/mobile/android/app/src/main/assets/public/

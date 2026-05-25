@@ -1,7 +1,42 @@
-import React, { useRef } from 'react';
+import React, { useRef, memo } from 'react';
 import { Globe, Send, Star, Wifi, RefreshCw, TriangleAlert, Terminal, Download, Plus, Trash2, Play, Upload } from 'lucide-react';
-import { getDriverRank } from '../utils/formatters';
-import convoyLogo from '../assets/branding/logo6516.svg';
+
+const StreamItem = memo(({ s, isActive, isFav, selectStream, toggleFavorite }) => {
+  return (
+    <div className={`stream-item ${isActive ? 'active' : ''}`}>
+      <div className="stream-info" onClick={() => selectStream(s)}>
+        <Globe size={16} />
+        <span>{s.title}</span>
+      </div>
+      {s.id !== 'local_playlist' && (
+        <button className={`fav-btn ${isFav ? 'is-fav' : ''}`}
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  toggleFavorite(s.id); 
+                }}>
+          <Star size={16} fill={isFav ? "currentColor" : "none"} />
+        </button>
+      )}
+    </div>
+  );
+});
+
+const CustomStreamItem = memo(({ s, isActive, selectStream, removeCustomStream, t }) => {
+  return (
+    <div className={`stream-item ${isActive ? 'active' : ''}`}>
+      <div className="stream-info" onClick={() => selectStream(s)}>
+        <Wifi size={16} />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+          <span style={{ fontWeight: 'bold' }}>{s.title}</span>
+          <span style={{ fontSize: '0.6rem', opacity: 0.5, maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.src}</span>
+        </div>
+      </div>
+      <button className="fav-btn" onClick={(e) => { e.stopPropagation(); removeCustomStream(s.id); }} title={t?.delete_btn}>
+        <Trash2 size={16} color="var(--vtc-red)" />
+      </button>
+    </div>
+  );
+});
 
 export default function RadioPanels({ 
   panel, setPanel, currentTrack, STREAMS_LIST = [], selectStream, 
@@ -29,28 +64,16 @@ export default function RadioPanels({
           {loadingStreams ? (
             <div className="loading-notice"><span className="blink">📡 SINCRONIZANDO SEÑAL...</span></div>
           ) : (
-            (STREAMS_LIST || []).map(s => {
-              const isActive = currentTrack?.id === s.id;
-              const fav = isFavorite?.(s.id);
-                
-              return (
-                <div key={s.id} className={`stream-item ${isActive ? 'active' : ''}`}>
-                  <div className="stream-info" onClick={() => selectStream(s)}>
-                    <Globe size={16} />
-                    <span>{s.title}</span>
-                  </div>
-                  {s.id !== 'local_playlist' && (
-                    <button className={`fav-btn ${fav ? 'is-fav' : ''}`}
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              toggleFavorite(s.id); 
-                            }}>
-                      <Star size={16} fill={fav ? "currentColor" : "none"} />
-                    </button>
-                  )}
-                </div>
-              );
-            })
+            (STREAMS_LIST || []).map(s => (
+              <StreamItem 
+                key={s.id} 
+                s={s} 
+                isActive={currentTrack?.id === s.id} 
+                isFav={isFavorite?.(s.id)} 
+                selectStream={selectStream} 
+                toggleFavorite={toggleFavorite} 
+              />
+            ))
           )}
         </div>
       </div>
@@ -94,23 +117,16 @@ export default function RadioPanels({
             {customStreamsList.length === 0 ? (
               <p style={{ fontSize: '0.7rem', color: '#444', fontStyle: 'italic' }}>{t?.custom_list_empty}</p>
             ) : (
-              customStreamsList.map(s => {
-                const isActive = currentTrack?.id === s.id;
-                return (
-                  <div key={s.id} className={`stream-item ${isActive ? 'active' : ''}`}>
-                    <div className="stream-info" onClick={() => selectStream(s)}>
-                      <Wifi size={16} />
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                        <span style={{ fontWeight: 'bold' }}>{s.title}</span>
-                        <span style={{ fontSize: '0.6rem', opacity: 0.5, maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.src}</span>
-                      </div>
-                    </div>
-                    <button className="fav-btn" onClick={(e) => { e.stopPropagation(); removeCustomStream(s.id); }} title={t?.delete_btn}>
-                      <Trash2 size={16} color="var(--vtc-red)" />
-                    </button>
-                  </div>
-                );
-              })
+              customStreamsList.map(s => (
+                <CustomStreamItem 
+                  key={s.id} 
+                  s={s} 
+                  isActive={currentTrack?.id === s.id} 
+                  selectStream={selectStream} 
+                  removeCustomStream={removeCustomStream} 
+                  t={t} 
+                />
+              ))
             )}
           </div>
 

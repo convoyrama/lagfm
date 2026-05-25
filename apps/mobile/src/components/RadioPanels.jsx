@@ -10,7 +10,7 @@ import OdometerDisplay from './OdometerDisplay';
 import LAGNodeHub from './LAGNodeHub/LAGNodeHub';
 import { Preferences } from '@capacitor/preferences';
 
-import convoyLogo from '../assets/branding/logo6516.svg';
+import convoyLogo from '../assets/branding/logo2800x512.svg';
 
 export default function RadioPanels({ 
   panel, setPanel, dynamicStreams, loadingStreams, tmpEvents, loadingEvents, fetchEvents 

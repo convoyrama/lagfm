@@ -37,12 +37,6 @@ pub fn run() {
         .setup(|app| {
             log::info!("[CORE] LAGFM Engine Start v6.0.1");
 
-            #[cfg(windows)]
-            unsafe {
-                let process = GetCurrentProcess();
-                let _ = SetPriorityClass(process, BELOW_NORMAL_PRIORITY_CLASS);
-            }
-
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.center();
                 let _ = window.show();
