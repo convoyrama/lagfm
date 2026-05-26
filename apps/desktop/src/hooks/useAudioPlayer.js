@@ -16,9 +16,10 @@ export function useAudioPlayer(currentTrack, setCurrentTrack, translations = {})
   const trayRef = useRef([]);
   const retryCount = useRef(0);
   const syncTimeout = useRef(null);
+  const stalledTimeout = useRef(null);
   const isInitialMount = useRef(true);
   const forcedLocal = useRef(false);
-  const MAX_RETRIES = 5;
+  const MAX_RETRIES = 2;
 
   const requestIdRef = useRef(0);
   const abortControllerRef = useRef(null);
