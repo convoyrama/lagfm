@@ -20,6 +20,9 @@ export function useAudioPlayer(currentTrack, setCurrentTrack, translations = {})
   const forcedLocal = useRef(false);
   const MAX_RETRIES = 5;
 
+  const requestIdRef = useRef(0);
+  const abortControllerRef = useRef(null);
+
   const stateRef = useRef({ onAir, currentTrack, setCurrentTrack, translations });
   useEffect(() => {
     stateRef.current = { onAir, currentTrack, setCurrentTrack, translations };
@@ -89,59 +92,98 @@ export function useAudioPlayer(currentTrack, setCurrentTrack, translations = {})
   }, [isExt, popNext]);
 
   const applySource = useCallback(async (src, isLocal) => {
+    const requestId = ++requestIdRef.current;
+    
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    abortControllerRef.current = new AbortController();
+    const { signal: abortSignal } = abortControllerRef.current;
+
     const audio = radioRef.current;
     
-    // Feedback inmediato: Semáforo en amarillo (Handshake)
+    // Feedback inmediato y parada síncrona
     updateLink('handshake');
-    
     audio.pause();
     
-    // Cleanup old blob URL if any
     if (audio.src && audio.src.startsWith('blob:')) {
         URL.revokeObjectURL(audio.src);
     }
     
     audio.src = "";
-    audio.load();
+    try { audio.load(); } catch(e) {}
     
-    if (isLocal) {
-        audio.removeAttribute('crossOrigin');
-        try {
-            const response = await fetch(`${window.location.origin}/${src}`);
+    // Timeout de seguridad: 4 segundos para conectar
+    const timeoutId = setTimeout(() => {
+        if (requestId === requestIdRef.current) {
+            abortControllerRef.current.abort();
+            log(`[RADIO] Connection timeout for #${requestId}`);
+            updateLink('failed');
+            // Si estaba en el aire y falla, intentamos rotar
+            if (stateRef.current.onAir && isExt(stateRef.current.currentTrack.id)) {
+                retrySync();
+            }
+        }
+    }, 4000);
+
+    try {
+        if (isLocal) {
+            audio.removeAttribute('crossOrigin');
+            const fetchUrl = src.startsWith('http') ? src : `${window.location.origin}/${src}`;
+            const response = await fetch(fetchUrl, { signal: abortSignal });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
             const blob = await response.blob();
+            if (requestId !== requestIdRef.current) {
+                clearTimeout(timeoutId);
+                return;
+            }
+
             const blobUrl = URL.createObjectURL(blob);
             audio.src = blobUrl;
-            
-            if (!isInitialMount.current) {
-                audio.play().catch(e => {
-                  if (e.name !== 'AbortError') log(`[RADIO] Local playback failed: ${e.message}`);
-                });
+        } else {
+            if (requestId !== requestIdRef.current) {
+                clearTimeout(timeoutId);
+                return;
             }
-        } catch (fetchErr) {
-            log(`[RADIO] Local fetch failed: ${fetchErr.message}. Fallback to direct path.`);
-            audio.src = `${window.location.origin}/${src}`;
+            audio.crossOrigin = "anonymous";
+            audio.src = src;
         }
-    } else {
-        audio.crossOrigin = "anonymous";
-        audio.src = src;
-        if (!isInitialMount.current) {
+
+        clearTimeout(timeoutId);
+
+        if (requestId === requestIdRef.current && !isInitialMount.current) {
+            // Usamos un catch silencioso para AbortError y controlamos el estado
             audio.play().catch(err => {
-                if (err.name !== 'AbortError') log(`[RADIO] Remote Play Error: ${err.message}`);
+                if (err.name !== 'AbortError' && requestId === requestIdRef.current) {
+                    log(`[RADIO] Play Error: ${err.message}`);
+                    updateLink('failed');
+                    if (isExt(stateRef.current.currentTrack.id)) retrySync();
+                }
             });
         }
+    } catch (err) {
+        clearTimeout(timeoutId);
+        if (err.name === 'AbortError' || requestId !== requestIdRef.current) {
+            return;
+        }
+        log(`[RADIO] Source error: ${err.message}`);
+        updateLink('failed');
+        // Si falla el inicio, pero el usuario quería escuchar, forzamos retry/fallback
+        if (isExt(stateRef.current.currentTrack.id)) retrySync();
     }
-  }, [updateLink]);
+  }, [updateLink, retrySync, isExt]);
 
   const retrySync = useCallback(() => {
     if (syncTimeout.current) clearTimeout(syncTimeout.current);
     if (retryCount.current < MAX_RETRIES) {
       retryCount.current += 1;
       updateLink('jitter');
+      log(`[RADIO] Retrying connection (${retryCount.current}/${MAX_RETRIES})...`);
       syncTimeout.current = setTimeout(() => {
         if (stateRef.current.onAir) {
           radioRef.current.load();
-          radioRef.current.play().catch(e => log(`Sync failed: ${e.message}`));
+          radioRef.current.play().catch(e => {
+            if (e.name !== 'AbortError') log(`Sync failed: ${e.message}`);
+          });
         }
       }, 3000);
     } else {
@@ -185,11 +227,15 @@ export function useAudioPlayer(currentTrack, setCurrentTrack, translations = {})
 
     return () => {
       audio.pause();
+      if (abortControllerRef.current) abortControllerRef.current.abort();
+      if (syncTimeout.current) clearTimeout(syncTimeout.current);
+
       if (audio.src && audio.src.startsWith('blob:')) {
         URL.revokeObjectURL(audio.src);
       }
       audio.src = "";
-      audio.load();
+      try { audio.load(); } catch(e) {}
+
       audio.removeEventListener('play', onPlay);
       audio.removeEventListener('pause', onPause);
       audio.removeEventListener('playing', onPlaying);
@@ -218,6 +264,30 @@ export function useAudioPlayer(currentTrack, setCurrentTrack, translations = {})
     if (!currentTrack.src) return;
     if (currentTrack.src === 'local') {
       const firstTrack = spin(true);
+      stateRef.current.setCurrentTrack(firstTrack);
+      return;
+    }
+
+    log(`Stream Switch: ${currentTrack.title} (ID: ${currentTrack.id})`);
+    retryCount.current = 0;
+    forcedLocal.current = false;
+    if (syncTimeout.current) clearTimeout(syncTimeout.current);
+    
+    const isLocal = currentTrack.id.toString().startsWith('local_') || currentTrack.id.toString().startsWith('j_') || currentTrack.id === 999;
+    applySource(currentTrack.src, isLocal);
+    isInitialMount.current = false;
+  }, [currentTrack.src, currentTrack.ts, applySource, spin]);
+
+  const togglePlay = useCallback(() => {
+    const audio = radioRef.current;
+    if (!audio.src || audio.src === "" || stateRef.current.currentTrack.id === -1) return;
+    if (audio.paused) audio.play().catch(e => log(`Play Failure: ${e.message}`));
+    else audio.pause();
+  }, []);
+
+  return { onAir, signal, volume, setVolume, currentTime, duration, togglePlay, spin };
+}
+ const firstTrack = spin(true);
       stateRef.current.setCurrentTrack(firstTrack);
       return;
     }
