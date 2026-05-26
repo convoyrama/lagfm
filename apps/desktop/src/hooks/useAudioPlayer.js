@@ -43,6 +43,7 @@ export function useAudioPlayer(currentTrack, setCurrentTrack, translations = {})
     }
     setSignal(prev => {
         if (isExt(stateRef.current.currentTrack.id)) return status;
+        if (status === 'failed') return 'failed';
         return 'online';
     });
   }, [isExt]);
@@ -136,13 +137,34 @@ export function useAudioPlayer(currentTrack, setCurrentTrack, translations = {})
     audio.src = "";
     try { audio.load(); } catch(e) {}
     
-    // Timeout de seguridad: 4 segundos para conectar
+    if (isLocal) {
+        try {
+            audio.removeAttribute('crossOrigin');
+            // En Tauri/Vite, los archivos en public/ se acceden desde el root.
+            const finalSrc = src.startsWith('/') ? src : `/${src}`;
+            audio.src = finalSrc;
+            
+            if (requestId === requestIdRef.current && !isInitialMount.current) {
+                audio.play().catch(err => {
+                    if (err.name !== 'AbortError' && requestId === requestIdRef.current) {
+                        log(`[RADIO] Local Play Error: ${err.message}`);
+                        updateLink('failed');
+                    }
+                });
+            }
+        } catch (err) {
+            log(`[RADIO] Local Source error: ${err.message}`);
+            updateLink('failed');
+        }
+        return;
+    }
+
+    // Timeout de seguridad solo para canales externos: 4 segundos para conectar
     const timeoutId = setTimeout(() => {
         if (requestId === requestIdRef.current) {
             abortControllerRef.current.abort();
             log(`[RADIO] Connection timeout for #${requestId}`);
             updateLink('failed');
-            // Si estaba en el aire y falla, intentamos rotar
             if (stateRef.current.onAir && isExt(stateRef.current.currentTrack.id)) {
                 retrySync();
             }
@@ -150,33 +172,16 @@ export function useAudioPlayer(currentTrack, setCurrentTrack, translations = {})
     }, 4000);
 
     try {
-        if (isLocal) {
-            audio.removeAttribute('crossOrigin');
-            const fetchUrl = src.startsWith('http') ? src : `${window.location.origin}/${src}`;
-            const response = await fetch(fetchUrl, { signal: abortSignal });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            
-            const blob = await response.blob();
-            if (requestId !== requestIdRef.current) {
-                clearTimeout(timeoutId);
-                return;
-            }
-
-            const blobUrl = URL.createObjectURL(blob);
-            audio.src = blobUrl;
-        } else {
-            if (requestId !== requestIdRef.current) {
-                clearTimeout(timeoutId);
-                return;
-            }
-            audio.crossOrigin = "anonymous";
-            audio.src = src;
+        if (requestId !== requestIdRef.current) {
+            clearTimeout(timeoutId);
+            return;
         }
+        audio.crossOrigin = "anonymous";
+        audio.src = src;
 
         clearTimeout(timeoutId);
 
         if (requestId === requestIdRef.current && !isInitialMount.current) {
-            // Usamos un catch silencioso para AbortError y controlamos el estado
             audio.play().catch(err => {
                 if (err.name !== 'AbortError' && requestId === requestIdRef.current) {
                     log(`[RADIO] Play Error: ${err.message}`);
@@ -192,7 +197,6 @@ export function useAudioPlayer(currentTrack, setCurrentTrack, translations = {})
         }
         log(`[RADIO] Source error: ${err.message}`);
         updateLink('failed');
-        // Si falla el inicio, pero el usuario quería escuchar, forzamos retry/fallback
         if (isExt(stateRef.current.currentTrack.id)) retrySync();
     }
   }, [updateLink, retrySync, isExt]);
