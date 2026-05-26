@@ -92,6 +92,30 @@ export function useAudioPlayer(currentTrack, setCurrentTrack, translations = {})
     return popNext(currentTrack.id);
   }, [isExt, popNext]);
 
+  const retrySync = useCallback(() => {
+    if (syncTimeout.current) clearTimeout(syncTimeout.current);
+    if (retryCount.current < MAX_RETRIES) {
+      retryCount.current += 1;
+      updateLink('jitter');
+      log(`[RADIO] Retrying connection (${retryCount.current}/${MAX_RETRIES})...`);
+      syncTimeout.current = setTimeout(() => {
+        if (stateRef.current.onAir) {
+          radioRef.current.load();
+          radioRef.current.play().catch(e => {
+            if (e.name !== 'AbortError') log(`Sync failed: ${e.message}`);
+          });
+        }
+      }, 3000);
+    } else {
+      log("[RADIO] Dead link. Falling back to local library.");
+      forcedLocal.current = true;
+      updateLink('fallback_active');
+      retryCount.current = 0;
+      const nextInternal = spin(true);
+      stateRef.current.setCurrentTrack(nextInternal);
+    }
+  }, [updateLink, spin]);
+
   const applySource = useCallback(async (src, isLocal) => {
     const requestId = ++requestIdRef.current;
     
@@ -173,45 +197,58 @@ export function useAudioPlayer(currentTrack, setCurrentTrack, translations = {})
     }
   }, [updateLink, retrySync, isExt]);
 
-  const retrySync = useCallback(() => {
-    if (syncTimeout.current) clearTimeout(syncTimeout.current);
-    if (retryCount.current < MAX_RETRIES) {
-      retryCount.current += 1;
-      updateLink('jitter');
-      log(`[RADIO] Retrying connection (${retryCount.current}/${MAX_RETRIES})...`);
-      syncTimeout.current = setTimeout(() => {
-        if (stateRef.current.onAir) {
-          radioRef.current.load();
-          radioRef.current.play().catch(e => {
-            if (e.name !== 'AbortError') log(`Sync failed: ${e.message}`);
-          });
-        }
-      }, 3000);
-    } else {
-      log("[RADIO] Dead link. Falling back to local library.");
-      forcedLocal.current = true;
-      updateLink('fallback_active');
-      retryCount.current = 0;
-      const nextInternal = spin(true);
-      stateRef.current.setCurrentTrack(nextInternal);
-    }
-  }, [updateLink, spin]);
-
   useEffect(() => {
     const audio = radioRef.current;
+    
+    const clearStalled = () => {
+        if (stalledTimeout.current) {
+            clearTimeout(stalledTimeout.current);
+            stalledTimeout.current = null;
+        }
+    };
+
     const onPlay = () => { setOnAir(true); retryCount.current = 0; };
-    const onPause = () => { setOnAir(false); };
-    const onPlaying = () => { setOnAir(true); updateLink('online'); };
-    const onEnded = () => { if (!isExt(stateRef.current.currentTrack.id)) stateRef.current.setCurrentTrack(spin()); };
+    const onPause = () => { setOnAir(false); clearStalled(); };
+    const onPlaying = () => { 
+        setOnAir(true); 
+        updateLink('online'); 
+        clearStalled(); 
+    };
+    const onEnded = () => { 
+        clearStalled();
+        if (!isExt(stateRef.current.currentTrack.id)) stateRef.current.setCurrentTrack(spin()); 
+    };
     const onError = () => { 
+        clearStalled();
         const err = audio.error;
         log(`Radio Engine Error: Code ${err?.code}`);
         if (isExt(stateRef.current.currentTrack.id) && stateRef.current.onAir) retrySync();
         else updateLink('failed');
     };
-    const onWaiting = () => updateLink('buffering');
-    const onStalled = () => updateLink('jitter');
-    const onCanPlay = () => updateLink('online');
+    const onWaiting = () => {
+        updateLink('buffering');
+        if (isExt(stateRef.current.currentTrack.id) && stateRef.current.onAir) {
+            if (stalledTimeout.current) clearTimeout(stalledTimeout.current);
+            stalledTimeout.current = setTimeout(() => {
+                log("[RADIO] Stalled for too long. Retrying...");
+                retrySync();
+            }, 6000);
+        }
+    };
+    const onStalled = () => {
+        updateLink('jitter');
+        if (isExt(stateRef.current.currentTrack.id) && stateRef.current.onAir) {
+            if (stalledTimeout.current) clearTimeout(stalledTimeout.current);
+            stalledTimeout.current = setTimeout(() => {
+                log("[RADIO] Stalled for too long (stalled event). Retrying...");
+                retrySync();
+            }, 6000);
+        }
+    };
+    const onCanPlay = () => {
+        updateLink('online');
+        clearStalled();
+    };
     const onTimeUpdate = () => setCurrentTime(audio.currentTime);
     const onDurationChange = () => setDuration(audio.duration);
 
@@ -228,6 +265,7 @@ export function useAudioPlayer(currentTrack, setCurrentTrack, translations = {})
 
     return () => {
       audio.pause();
+      clearStalled();
       if (abortControllerRef.current) abortControllerRef.current.abort();
       if (syncTimeout.current) clearTimeout(syncTimeout.current);
 
@@ -265,30 +303,6 @@ export function useAudioPlayer(currentTrack, setCurrentTrack, translations = {})
     if (!currentTrack.src) return;
     if (currentTrack.src === 'local') {
       const firstTrack = spin(true);
-      stateRef.current.setCurrentTrack(firstTrack);
-      return;
-    }
-
-    log(`Stream Switch: ${currentTrack.title} (ID: ${currentTrack.id})`);
-    retryCount.current = 0;
-    forcedLocal.current = false;
-    if (syncTimeout.current) clearTimeout(syncTimeout.current);
-    
-    const isLocal = currentTrack.id.toString().startsWith('local_') || currentTrack.id.toString().startsWith('j_') || currentTrack.id === 999;
-    applySource(currentTrack.src, isLocal);
-    isInitialMount.current = false;
-  }, [currentTrack.src, currentTrack.ts, applySource, spin]);
-
-  const togglePlay = useCallback(() => {
-    const audio = radioRef.current;
-    if (!audio.src || audio.src === "" || stateRef.current.currentTrack.id === -1) return;
-    if (audio.paused) audio.play().catch(e => log(`Play Failure: ${e.message}`));
-    else audio.pause();
-  }, []);
-
-  return { onAir, signal, volume, setVolume, currentTime, duration, togglePlay, spin };
-}
- const firstTrack = spin(true);
       stateRef.current.setCurrentTrack(firstTrack);
       return;
     }
